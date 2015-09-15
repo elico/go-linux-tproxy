@@ -8,6 +8,7 @@ import (
 )
 
 const big = 0xFFFFFF
+const IP_ORIGADDRS = 20
 
 func ipToSocksAddr(family int, ip net.IP, port int, zone string) (unix.Sockaddr, error) {
 	switch family {
@@ -172,4 +173,46 @@ func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 	fmt.Println(client.LocalAddr())
 	fmt.Println(client.RemoteAddr())
 	return client, err
+}
+
+
+func UdpListen(listenAddr string) (listener net.Listener, err error) {
+	s, err := unix.Socket(unix.AF_INET6, unix.SOCK_DGRAM, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer unix.Close(s)
+	err = unix.SetsockoptInt(s, unix.SOL_IP, unix.IP_TRANSPARENT, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	err = unix.SetsockoptInt(s, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+	if err != nil {
+		return nil, err
+	}
+	err = unix.SetsockoptInt(s, unix.SOL_SOCKET, unix.SO_BROADCAST, 1)
+	if err != nil {
+		return nil, err
+	}
+	err = unix.SetsockoptInt(s, unix.SOL_SOCKET, IP_ORIGADDRS, 1)
+	if err != nil {
+		return nil, err
+	}	
+
+	sa, err := IPv6TcpAddrToUnixSocksAddr(listenAddr)
+	if err != nil {
+		return nil, err
+	}
+	err = unix.Bind(s, sa)
+	if err != nil {
+		return nil, err
+	}
+	err = unix.Listen(s, unix.SOMAXCONN)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(s), "TProxy")
+	defer f.Close()
+	return net.FileListener(f)
 }
