@@ -1,3 +1,5 @@
+// Package tproxy provides the TcpDial and TcpListen tproxy equivalent of the 
+// net package Dial and Listen with tproxy support for linux ONLY.
 package tproxy
 
 import (
@@ -90,6 +92,10 @@ func IPv6UdpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
 	return ipToSocksAddr(unix.AF_INET6, tcpAddr.IP, tcpAddr.Port, tcpAddr.Zone)
 }
 
+// TcpListen is listening for incoming IP packets which are being intercepted.
+// In conflict to regular Listen mehtod the socket destination and source addresses
+// are of the intercepted connection.
+// Else then that it works exactly like net package net.Listen.
 func TcpListen(listenAddr string) (listener net.Listener, err error) {
 	s, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
 	if err != nil {
@@ -118,11 +124,16 @@ func TcpListen(listenAddr string) (listener net.Listener, err error) {
 	return net.FileListener(f)
 }
 
+// TcpDial is a special tcp connection which binds a non local address as the source.
+// Except then the option to bind to a specific local address which the machine doesn't posses
+// it is exactly like any other net.Conn connection.
+// It is advised to use port numbered 0 in the localAddr and leave the kernel to choose which
+// Local port to use in order to avoid errors and binding conflicts.
 func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 	fmt.Println(localAddr)
 	fmt.Println(remoteAddr)
 	s, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
-	
+
 	//In a case there was a need for a non-blocking socket an example
 	//s, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM |unix.SOCK_NONBLOCK, 0)
 	if err != nil {
@@ -147,19 +158,19 @@ func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
-	
+
 	sa, err := IPv6TcpAddrToUnixSocksAddr(rhost+":0")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
-	
+
 	remoteSocket, err := IPv6TcpAddrToUnixSocksAddr(remoteAddr)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
-	
+
 	err = unix.Bind(s, sa)
 	if err != nil {
 		fmt.Println(err)
@@ -171,7 +182,7 @@ func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 		fmt.Println(err)
 		return nil, err
 	}
-	
+
 	f := os.NewFile(uintptr(s), "TProxyTcpClient")
 	client , err := net.FileConn(f)
 	if err != nil {
