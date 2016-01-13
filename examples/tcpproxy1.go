@@ -140,7 +140,6 @@ func handleConn(cliConn net.Conn, remoteAddr string) {
 
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
     var rLimit syscall.Rlimit
     err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
     if err != nil {
