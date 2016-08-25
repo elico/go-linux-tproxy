@@ -1,16 +1,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/asaskevich/govalidator"
 	"github.com/elico/go-linux-tproxy"
 	"net"
 	"net/http"
-  "errors"
 )
 
 func noRedirect(req *http.Request, via []*http.Request) error {
-        return errors.New("Don't redirect!")
+	return errors.New("Don't redirect!")
 }
 
 func main() {
@@ -39,13 +39,13 @@ func main() {
 				for i, ip := range ips {
 					srvConn, err := tproxy.TcpDial(fakeIp, net.JoinHostPort(ip.String(), port))
 					if err != nil {
-            fmt.Println(err)
+						fmt.Println(err)
 						if i == len(ips) {
 							return srvConn, nil
 						}
 						continue
 					}
-          fmt.Println("returning a srvconn")
+					fmt.Println("returning a srvconn")
 					return srvConn, nil
 				}
 				srvConn, err := tproxy.TcpDial(fakeIp, addr)
@@ -54,12 +54,12 @@ func main() {
 				}
 				return srvConn, nil
 			}
-      return nil, nil
+			return nil, nil
 		}),
 	}
-	client := &http.Client{Transport: netTransport, CheckRedirect: noRedirect, }
+	client := &http.Client{Transport: netTransport, CheckRedirect: noRedirect}
 	resp, err := client.Get("http://www.google.com/")
-	if err != nil && resp == nil{
+	if err != nil && resp == nil {
 		fmt.Println(err)
 		return
 	}
