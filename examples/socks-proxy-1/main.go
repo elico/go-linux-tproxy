@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 
@@ -8,40 +9,19 @@ import (
 	socks "github.com/fangdingjun/socks-go"
 )
 
-// var clientRegistry map[string]*tproxyDialer
-
-// type TproxyDialer struct {
-// 	ClientAdress string
-// }
-
-// func (TproxyDialer) New(ipAddress string) (*TproxyDialer, error) {
-// 	switch {
-// 	case govalidator.IsIP(ipAddress):
-// 		return &TproxyDialer{ClientAdress: ipAddress}, errors.New("Only IPv4 and V6 addresses are supported")
-// 	default:
-// 		return &TproxyDialer{""}, errors.New("Only IPv4 and V6 addresses are supported")
-// 	}
-// }
-
-// func (t *TproxyDialer) Dial(net, address string) (*net.Conn, error) {
-// 	switch net {
-// 	case "tcp":
-// 		srvConn, err := tproxy.TcpDial(t.ClientAdress, address)
-// 		return &srvConn, err
-// 	default:
-// 		return nil, errors.New("Only \"tcp\" net is supported")
-// 	}
-// }
+// https://gist.github.com/kotakanbe/d3059af990252ba89a82
 
 func main() {
-
-	// clientRegistry := make(map[string]*TproxyDialer, 100)
-
+	tproxy.Debug = true
 	conn, err := net.Listen("tcp", ":1080")
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	ReadCidrListFile("cidr.txt")
+	fmt.Println("Random hosts avaliable:", len(RandomHosts))
+	if len(RandomHosts) == 0 {
+		panic("0 Random host avaliable, the service must have at leat 1")
+	}
 	for {
 		c, err := conn.Accept()
 		if err != nil {
@@ -49,27 +29,19 @@ func main() {
 			continue
 		}
 
-		log.Printf("connected from %s", c.RemoteAddr())
-		host, _, _ := net.SplitHostPort(c.RemoteAddr().String())
-		// var tpDialer *TproxyDialer
-		// var ok bool
-		// if tpDialer, ok = clientRegistry[host]; ok {
+		log.Println("connected from ", c.RemoteAddr().String())
 
-		// }
-		// t := tproxyDialer.new("192.168.89.1")
-		// tpDialer.Dial("tcp", "192.168.89.5")
-
-		// d := net.Dialer{Timeout: 10 * time.Second}
-
+		host := RandomHosts[random(0, len(RandomHosts))] + ":0"
+		// host := "10.0.3.1:0"
 		s := socks.Conn{Conn: c, Dial: (func(net, address string) (net.Conn, error) {
-			log.Println("Dialing a tproxy from:", host, "to:", address)
-			srvConn, err := tproxy.TcpDial(host, address)
+			log.Println("Dialing a tproxy from:", host, "to:", address, "net:", net)
+			srvConn, err := tproxy.TCPDial(host, address)
 			if err != nil {
 				log.Println("ERROR Dialing a tproxy from:", host, "to:", address, "ERROR:", err)
 			}
 			return srvConn, err
-		}),
-		}
+		})}
+
 		go s.Serve()
 	}
 }
