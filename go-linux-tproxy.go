@@ -82,6 +82,9 @@ func dtoi(s string, i0 int) (n int, i int, ok bool) {
 
 // IPv6TcpAddrToUnixSocksAddr ---
 func IPv6TcpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
+	if Debug {
+		fmt.Println("DEBUG: IPv6TcpAddrToUnixSocksAddr recieved address:", addr)
+	}
 	tcpAddr, err := net.ResolveTCPAddr("tcp6", addr)
 	if err != nil {
 		return nil, err
