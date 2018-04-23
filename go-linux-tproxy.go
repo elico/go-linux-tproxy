@@ -80,12 +80,16 @@ func dtoi(s string, i0 int) (n int, i int, ok bool) {
 	return n, i, true
 }
 
-// IPv6TcpAddrToUnixSocksAddr ---
-func IPv6TcpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
+// IPTcpAddrToUnixSocksAddr ---
+func IPTcpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
 	if Debug {
-		fmt.Println("DEBUG: IPv6TcpAddrToUnixSocksAddr recieved address:", addr)
+		fmt.Println("DEBUG: IPTcpAddrToUnixSocksAddr recieved address:", addr)
 	}
-	tcpAddr, err := net.ResolveTCPAddr("tcp6", addr)
+	addressNet := "tcp6"
+	if addr[0] != '[' {
+		addressNet = "tcp4"
+	}
+	tcpAddr, err := net.ResolveTCPAddr(addressNet, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +120,7 @@ func TCPListen(listenAddr string) (listener net.Listener, err error) {
 		return nil, err
 	}
 
-	sa, err := IPv6TcpAddrToUnixSocksAddr(listenAddr)
+	sa, err := IPTcpAddrToUnixSocksAddr(listenAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -176,18 +180,18 @@ func TCPDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 		}
 	}
 
-	sa, err := IPv6TcpAddrToUnixSocksAddr(rhost + ":0")
+	sa, err := IPTcpAddrToUnixSocksAddr(rhost + ":0")
 	if err != nil {
 		if Debug {
-			fmt.Println("ERROR creating a hostaddres for the socker with IPv6TcpAddrToUnixSocksAddr", err)
+			fmt.Println("ERROR creating a hostaddres for the socker with IPTcpAddrToUnixSocksAddr", err)
 		}
 		return nil, err
 	}
 
-	remoteSocket, err := IPv6TcpAddrToUnixSocksAddr(remoteAddr)
+	remoteSocket, err := IPTcpAddrToUnixSocksAddr(remoteAddr)
 	if err != nil {
 		if Debug {
-			fmt.Println("ERROR creating a remoteSocket for the socker with IPv6TcpAddrToUnixSocksAddr on the remote addres", err)
+			fmt.Println("ERROR creating a remoteSocket for the socker with IPTcpAddrToUnixSocksAddr on the remote addres", err)
 		}
 		return nil, err
 	}
