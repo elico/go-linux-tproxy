@@ -109,7 +109,7 @@ func handleConn(cliConn net.Conn, remoteAddr string) {
 	fmt.Println("After peeking")
 
 	// For an outgoing tproxy connection use the next:
-	// srvConn, err := tproxy.TcpDial((cliConn.RemoteAddr()).String(), (cliConn.LocalAddr()).String())
+	// srvConn, err := tproxy.TCPDial((cliConn.RemoteAddr()).String(), (cliConn.LocalAddr()).String())
 
 	// For a simple connection use the next:
 	srvConn, err := net.Dial("tcp", cliConn.LocalAddr().String())

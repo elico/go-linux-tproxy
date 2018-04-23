@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/asaskevich/govalidator"
-	"github.com/elico/go-linux-tproxy"
 	"net"
 	"net/http"
+
+	"github.com/asaskevich/govalidator"
+	"github.com/elico/go-linux-tproxy"
 )
 
 func noRedirect(req *http.Request, via []*http.Request) error {

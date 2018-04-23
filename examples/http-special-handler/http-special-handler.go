@@ -34,7 +34,7 @@ func getClient(srcipaddr string) http.Client {
 			}
 			switch {
 			case govalidator.IsIP(host):
-				srvConn, err := tproxy.TcpDial(fakeIp, addr)
+				srvConn, err := tproxy.TCPDial(fakeIp, addr)
 				if err != nil {
 					return nil, err
 				}
@@ -45,7 +45,7 @@ func getClient(srcipaddr string) http.Client {
 					return nil, err
 				}
 				for i, ip := range ips {
-					srvConn, err := tproxy.TcpDial(fakeIp, net.JoinHostPort(ip.String(), port))
+					srvConn, err := tproxy.TCPDial(fakeIp, net.JoinHostPort(ip.String(), port))
 					if err != nil {
 						fmt.Println(err)
 						if i == len(ips) {
@@ -56,7 +56,7 @@ func getClient(srcipaddr string) http.Client {
 					fmt.Println("returning a srvconn")
 					return srvConn, nil
 				}
-				srvConn, err := tproxy.TcpDial(fakeIp, addr)
+				srvConn, err := tproxy.TCPDial(fakeIp, addr)
 				if err != nil {
 					return nil, err
 				}
@@ -80,7 +80,7 @@ func main() {
 	}
 
 	// create custom listener
-	nl, err := tproxy.TcpListen(":8080")
+	nl, err := tproxy.TCPListen(":8080")
 
 	//nl, err := net.Listen("tcp", ":8080")
 	if err != nil {

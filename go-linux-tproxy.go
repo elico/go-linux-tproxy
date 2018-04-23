@@ -1,16 +1,20 @@
-// Package tproxy provides the TcpDial and TcpListen tproxy equivalent of the 
+// Package tproxy provides the TCPDial and TCPListen tproxy equivalent of the
 // net package Dial and Listen with tproxy support for linux ONLY.
 package tproxy
 
 import (
+	"fmt"
 	"net"
 	"os"
-	"fmt"
+
 	"golang.org/x/sys/unix"
 )
 
 const big = 0xFFFFFF
 const IP_ORIGADDRS = 20
+
+// Debug outs the library in Debug mode
+var Debug = false
 
 func ipToSocksAddr(family int, ip net.IP, port int, zone string) (unix.Sockaddr, error) {
 	switch family {
@@ -76,14 +80,23 @@ func dtoi(s string, i0 int) (n int, i int, ok bool) {
 	return n, i, true
 }
 
-func IPv6TcpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp6", addr)
+// IPTcpAddrToUnixSocksAddr ---
+func IPTcpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
+	if Debug {
+		fmt.Println("DEBUG: IPTcpAddrToUnixSocksAddr recieved address:", addr)
+	}
+	addressNet := "tcp6"
+	if addr[0] != '[' {
+		addressNet = "tcp4"
+	}
+	tcpAddr, err := net.ResolveTCPAddr(addressNet, addr)
 	if err != nil {
 		return nil, err
 	}
 	return ipToSocksAddr(unix.AF_INET6, tcpAddr.IP, tcpAddr.Port, tcpAddr.Zone)
 }
 
+// IPv6UdpAddrToUnixSocksAddr ---
 func IPv6UdpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
 	tcpAddr, err := net.ResolveTCPAddr("udp6", addr)
 	if err != nil {
@@ -92,11 +105,11 @@ func IPv6UdpAddrToUnixSocksAddr(addr string) (sa unix.Sockaddr, err error) {
 	return ipToSocksAddr(unix.AF_INET6, tcpAddr.IP, tcpAddr.Port, tcpAddr.Zone)
 }
 
-// TcpListen is listening for incoming IP packets which are being intercepted.
+// TCPListen is listening for incoming IP packets which are being intercepted.
 // In conflict to regular Listen mehtod the socket destination and source addresses
 // are of the intercepted connection.
 // Else then that it works exactly like net package net.Listen.
-func TcpListen(listenAddr string) (listener net.Listener, err error) {
+func TCPListen(listenAddr string) (listener net.Listener, err error) {
 	s, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
 	if err != nil {
 		return nil, err
@@ -107,7 +120,7 @@ func TcpListen(listenAddr string) (listener net.Listener, err error) {
 		return nil, err
 	}
 
-	sa, err := IPv6TcpAddrToUnixSocksAddr(listenAddr)
+	sa, err := IPTcpAddrToUnixSocksAddr(listenAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -124,14 +137,15 @@ func TcpListen(listenAddr string) (listener net.Listener, err error) {
 	return net.FileListener(f)
 }
 
-// TcpDial is a special tcp connection which binds a non local address as the source.
+// TCPDial is a special tcp connection which binds a non local address as the source.
 // Except then the option to bind to a specific local address which the machine doesn't posses
 // it is exactly like any other net.Conn connection.
 // It is advised to use port numbered 0 in the localAddr and leave the kernel to choose which
 // Local port to use in order to avoid errors and binding conflicts.
-func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
-	fmt.Println(localAddr)
-	fmt.Println(remoteAddr)
+func TCPDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
+	if Debug {
+		fmt.Println("TCPDial from:", localAddr, "to:", remoteAddr)
+	}
 	s, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM, 0)
 
 	//In a case there was a need for a non-blocking socket an example
@@ -143,31 +157,42 @@ func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 	defer unix.Close(s)
 	err = unix.SetsockoptInt(s, unix.SOL_IP, unix.IP_TRANSPARENT, 1)
 	if err != nil {
-		fmt.Println(err)
+		if Debug {
+			fmt.Println("ERROR setting the socket in IP_TRANSPARENT mode", err)
+		}
+
 		return nil, err
 	}
 
 	err = unix.SetsockoptInt(s, unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 	if err != nil {
-		fmt.Println(err)
+		if Debug {
+			fmt.Println("ERROR setting the socket in unix.SO_REUSEADDR mode", err)
+		}
 		return nil, err
 	}
 
-	rhost, rport, err := net.SplitHostPort(localAddr)
-	_ = rport
+	rhost, _, err := net.SplitHostPort(localAddr)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		if Debug {
+			// fmt.Fprintln(os.Stderr, err)
+			fmt.Println("ERROR", err, "running net.SplitHostPort on address:", localAddr)
+		}
 	}
 
-	sa, err := IPv6TcpAddrToUnixSocksAddr(rhost+":0")
+	sa, err := IPTcpAddrToUnixSocksAddr(rhost + ":0")
 	if err != nil {
-		fmt.Println(err)
+		if Debug {
+			fmt.Println("ERROR creating a hostaddres for the socker with IPTcpAddrToUnixSocksAddr", err)
+		}
 		return nil, err
 	}
 
-	remoteSocket, err := IPv6TcpAddrToUnixSocksAddr(remoteAddr)
+	remoteSocket, err := IPTcpAddrToUnixSocksAddr(remoteAddr)
 	if err != nil {
-		fmt.Println(err)
+		if Debug {
+			fmt.Println("ERROR creating a remoteSocket for the socker with IPTcpAddrToUnixSocksAddr on the remote addres", err)
+		}
 		return nil, err
 	}
 
@@ -177,19 +202,24 @@ func TcpDial(localAddr, remoteAddr string) (conn net.Conn, err error) {
 		return nil, err
 	}
 
-	err = unix.Connect(s,remoteSocket)
+	err = unix.Connect(s, remoteSocket)
 	if err != nil {
-		fmt.Println(err)
+		if Debug {
+			fmt.Println("ERROR Connecting from", s, "to:", remoteSocket, "ERROR:", err)
+		}
 		return nil, err
 	}
 
-	f := os.NewFile(uintptr(s), "TProxyTcpClient")
-	client , err := net.FileConn(f)
+	f := os.NewFile(uintptr(s), "TProxyTCPClient")
+	client, err := net.FileConn(f)
 	if err != nil {
-		fmt.Println(err)
+		if Debug {
+			fmt.Println("ERROR os.NewFile", err)
+		}
 		return nil, err
 	}
-	fmt.Println(client.LocalAddr())
-	fmt.Println(client.RemoteAddr())
+	if Debug {
+		fmt.Println("FINISHED Creating net.coo from:", client.LocalAddr().String(), "to:", client.RemoteAddr().String())
+	}
 	return client, err
 }
